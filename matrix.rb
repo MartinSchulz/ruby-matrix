@@ -15,7 +15,8 @@ class Matrix
 
   # convinient inspection
   def to_s
-    @data
+    @data.dup
+      .map { |row| row.map! { |e| e.round(4) } }
       .inspect
       .split('],')
       .join("],\n")
@@ -63,6 +64,12 @@ class Matrix
 
   # multiplication
   def *(right_operand)
+    if right_operand.is_a?(Numeric)
+      return muliplicative_operation(right_operand) do |left, right|
+        left * right
+      end
+    end
+
     if @width != right_operand.height
       raise 'Wrong operand'
     end
@@ -89,17 +96,19 @@ class Matrix
   end
 
   def /(right_operand)
-    new_data = @data.dup
-
     if right_operand.is_a?(Numeric)
-      0.upto(@width - 1) do |row|
-        0.upto(@height - 1) do |col|
-          new_data[row][col] /= right_operand
-        end
+      return muliplicative_operation(right_operand) do |left, right|
+        left / right
       end
     end
 
-    Matrix.new new_data
+    if @width != @height ||
+      right_operand.width != right_operand.height ||
+      @width != right_operand.width
+      raise 'wrong operand'
+    end
+
+    self * right_operand.inverse
   end
 
   # gaussian elimination
@@ -239,8 +248,26 @@ class Matrix
     each_row do |row, row_index|
       new_row = []
       row.each_index do |col_index|
-        left_value = row[col_index]
+        left_value = row[col_index].to_f
         right_value = right_operand.data[row_index][col_index]
+        new_row.push(yield left_value, right_value)
+      end
+
+      new_data.push new_row
+    end
+
+    Matrix.new new_data
+  end
+
+  def muliplicative_operation(right_operand)
+    new_data = []
+
+    # iterating all over the elements and DO something with them
+    each_row do |row, row_index|
+      new_row = []
+      row.each_index do |col_index|
+        left_value = row[col_index].to_f
+        right_value = right_operand
         new_row.push(yield left_value, right_value)
       end
 
@@ -278,5 +305,8 @@ class Matrix
 end
 
 m1 = Matrix.new([[1, 2, 3], [2, 3, 4], [4, 55, 62]])
+m2 = Matrix.new([[1, 2, 3], [2, 3, 4], [4, 55, 62]])
 
-puts m1.inverse
+# puts m1.inverse
+
+puts m1 / m2
